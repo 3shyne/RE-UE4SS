@@ -1,33 +1,62 @@
-name: Make Experimental Release
+name: Deploy docs
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   build:
-    name: build
-    strategy:
-      fail-fast: false
-      matrix:
-        config: [Release]
-    runs-on: windows-2022
-
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          submodules: recursive
+          python-version: 3x
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install mkdocs-material mkdocs-minify-plugin mkdocs-redirects mkdocs-git-revision-date-localized-plugin
 
-      - name: Configure CMake
-        run: cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+      - name: Build documentation
+        run: mkdocs build
 
-      - name: Build
-        run: cmake --build build --config ${{ matrix.config }}
+      - name: Upload documentation artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
 
-      - name: Upload Compiled Files
+      - name: Force Save Binary Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RE-UE4SS-Experimental-Build
-          path: build/Output/Release/
+          name: RE-UE4SS-Compiled-Binary
+          path: |
+            build/
+            **/Output/
+            **/*.dll
+            **/*.usmap
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
