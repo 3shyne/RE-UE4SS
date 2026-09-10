@@ -1,29 +1,11 @@
 name: Make Experimental Release
 
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
 
 jobs:
-  check-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      changed: ${{ steps.check.outputs.changed }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - id: check
-        run: |
-          if git diff --name-only HEAD^ HEAD | grep -E '\.(cpp|h|hpp|cmake)$|CMakeLists\.txt'; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-
   build:
     name: build
-    needs: check-changes
-    if: needs: check-changes.outputs.changed == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -48,6 +30,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: RE-UE4SS-Experimental-Build
-          path: |
-            build/Output/Release/
-            build/bin/
+          path: build/Output/Release/
